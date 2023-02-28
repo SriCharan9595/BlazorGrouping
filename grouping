@@ -1,0 +1,33 @@
+public async Task<StudentResult> GetStudents( LazyLoadRequest lazyLoadRequest )
+        {
+            var students = GetModelData(); // contains data from db
+            if(lazyLoadRequest.Groups != null)
+            {
+                //lazyLoadRequest.Groups.FirstOrDefault(x => x.DisplayContent)
+                var groupFieldName = lazyLoadRequest.Groups.Select(f => f.DisplayContent).FirstOrDefault();
+
+                var groupedStudents = students.GroupBy(s =>
+                {
+                    var propertyValue = s.GetType().GetProperty(groupFieldName).GetValue(s);
+                    return propertyValue != null ? propertyValue : "Null";
+                });
+
+                return new
+                {
+                    CashSummaries = groupedStudents.ToDictionary(
+                        group => group.Key,
+                        group => group.ToList()),
+                    TotalCount = students?.Count()
+                };
+            }
+            else
+                return new StudentResult { Students = students, TotalCount = students?.Count() };
+        }
+
+StudentResult.cs
+
+public class StudentResult
+    {
+        public IEnumerable<Student> students { get; set; }
+        public int? TotalCount { get; set; }
+    }
