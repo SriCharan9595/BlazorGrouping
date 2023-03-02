@@ -1,37 +1,16 @@
-private string FilterRequest( DataSourceRequest gridRequest )
-        {
-            string filterquery = "";
-            var filters = gridRequest.Filters.Select(s => s).ToList();
-            
-
-            foreach (IFilterDescriptor item in gridRequest.Filters)
-            {
-                filterquery += GetFilterDescriptorMember(item.FilterDescriptors, item.LogicalOperator == 0 ? "AND" : "OR");
-                if (item != filters.LastOrDefault())
-                {
-                    filterquery += "AND ";
-                }
-            }
-            return filterquery.TrimEnd();
-        }
-
-
 foreach (IFilterDescriptor filter in request.Filters)
 {
     if (filter is CompositeFilterDescriptor compositeFilter)
     {
-        FilterCompositionLogicalOperator logicalOperator = compositeFilter.LogicalOperator;
+        string compositeOperator = compositeFilter.LogicalOperator == FilterCompositionLogicalOperator.And ? "AND" : "OR";
 
-        foreach (IFilterDescriptor filterDescriptor in compositeFilter.FilterDescriptors)
+        foreach (FilterDescriptor filterDescriptor in compositeFilter.FilterDescriptors.OfType<FilterDescriptor>())
         {
-            if (filterDescriptor is FilterDescriptor)
-            {
-                string member = ((FilterDescriptor)filterDescriptor).Member;
-                FilterOperator op = ((FilterDescriptor)filterDescriptor).Operator;
-                object value = ((FilterDescriptor)filterDescriptor).Value;
+            string member = filterDescriptor.Member;
+            FilterOperator op = filterDescriptor.Operator;
+            object value = filterDescriptor.Value;
 
-                // use member, op, value, and logicalOperator as needed
-            }
+            // use member, op, value, and compositeOperator as needed
         }
     }
     else if (filter is FilterDescriptor filterDescriptor)
@@ -43,12 +22,3 @@ foreach (IFilterDescriptor filter in request.Filters)
         // use member, op, and value as needed
     }
 }
-In this code, the if (filter is CompositeFilterDescriptor) statement checks whether the current filter is a CompositeFilterDescriptor object. If it is, the logicalOperator variable is set to the LogicalOperator property of the CompositeFilterDescriptor. Then, the code iterates through the FilterDescriptors property of the CompositeFilterDescriptor and extracts the Member, Operator, and Value properties of each FilterDescriptor object.
-
-If the current filter is not a CompositeFilterDescriptor, the code checks whether it is a FilterDescriptor. If it is, the Member, Operator, and Value properties are extracted as before.
-
-I hope this helps!
-
-
-
-
