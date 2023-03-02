@@ -14,3 +14,41 @@ private string FilterRequest( DataSourceRequest gridRequest )
             }
             return filterquery.TrimEnd();
         }
+
+
+foreach (IFilterDescriptor filter in request.Filters)
+{
+    if (filter is CompositeFilterDescriptor compositeFilter)
+    {
+        FilterCompositionLogicalOperator logicalOperator = compositeFilter.LogicalOperator;
+
+        foreach (IFilterDescriptor filterDescriptor in compositeFilter.FilterDescriptors)
+        {
+            if (filterDescriptor is FilterDescriptor)
+            {
+                string member = ((FilterDescriptor)filterDescriptor).Member;
+                FilterOperator op = ((FilterDescriptor)filterDescriptor).Operator;
+                object value = ((FilterDescriptor)filterDescriptor).Value;
+
+                // use member, op, value, and logicalOperator as needed
+            }
+        }
+    }
+    else if (filter is FilterDescriptor filterDescriptor)
+    {
+        string member = filterDescriptor.Member;
+        FilterOperator op = filterDescriptor.Operator;
+        object value = filterDescriptor.Value;
+
+        // use member, op, and value as needed
+    }
+}
+In this code, the if (filter is CompositeFilterDescriptor) statement checks whether the current filter is a CompositeFilterDescriptor object. If it is, the logicalOperator variable is set to the LogicalOperator property of the CompositeFilterDescriptor. Then, the code iterates through the FilterDescriptors property of the CompositeFilterDescriptor and extracts the Member, Operator, and Value properties of each FilterDescriptor object.
+
+If the current filter is not a CompositeFilterDescriptor, the code checks whether it is a FilterDescriptor. If it is, the Member, Operator, and Value properties are extracted as before.
+
+I hope this helps!
+
+
+
+
