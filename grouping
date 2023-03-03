@@ -1,24 +1,22 @@
-foreach (IFilterDescriptor filter in request.Filters)
-{
-    if (filter is CompositeFilterDescriptor compositeFilter)
-    {
-        string compositeOperator = compositeFilter.LogicalOperator == FilterCompositionLogicalOperator.And ? "AND" : "OR";
+Severity	Code	Description	Project	Path	File	Line	Suppression State
+Error	CS1929	'DataSourceResult' does not contain a definition for 'Where' and the best extension method overload 'DynamicQueryableExtensions.Where(IQueryable, string, params object?[])' requires a receiver of type 'IQueryable'	PIMDataStore.API	E:\Workspaces\SKurapa\pimd-api\PIMD\src\PIMDataStore.API\PIMDataStore.API\Services	E:\Workspaces\SKurapa\pimd-api\PIMD\src\PIMDataStore.API\PIMDataStore.API\Services\CashSummaryServices.cs	133	Active
 
-        foreach (FilterDescriptor filterDescriptor in compositeFilter.FilterDescriptors.OfType<FilterDescriptor>())
-        {
-            string member = filterDescriptor.Member;
-            FilterOperator op = filterDescriptor.Operator;
-            object value = filterDescriptor.Value;
+ CashSummaryList = cashSummarries.ToList();
 
-            // use member, op, value, and compositeOperator as needed
-        }
-    }
-    else if (filter is FilterDescriptor filterDescriptor)
-    {
-        string member = filterDescriptor.Member;
-        FilterOperator op = filterDescriptor.Operator;
-        object value = filterDescriptor.Value;
+            IQueryable<CashSummary> queriableData = CashSummaryList.AsQueryable();
 
-        // use member, op, and value as needed
-    }
-}
+            DataSourceResult processedData = await queriableData.ToDataSourceResultAsync(gridRequest);
+
+            DataEnvelope<CashSummary> dataToReturn;
+
+            if (gridRequest.Groups?.Any() == true)
+            {
+                processedData = (from cs in processedData
+                                         where cs.Account != null && cs.Account.ToLower().Contains(portfolio.PortfolioValue.ToLower())
+                                         select cs);
+                dataToReturn = new DataEnvelope<CashSummary>
+                {
+                    GroupedData = processedData.Data.Cast<AggregateFunctionsGroup>().ToList(),
+                    TotalItemCount = processedData.Total
+                };
+            }
