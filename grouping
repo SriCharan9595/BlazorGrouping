@@ -1,7 +1,14 @@
-Severity	Code	Description	Project	Path	File	Line	Suppression State
-Error	CS1929	'DataSourceResult' does not contain a definition for 'Where' and the best extension method overload 'DynamicQueryableExtensions.Where(IQueryable, string, params object?[])' requires a receiver of type 'IQueryable'	PIMDataStore.API	E:\Workspaces\SKurapa\pimd-api\PIMD\src\PIMDataStore.API\PIMDataStore.API\Services	E:\Workspaces\SKurapa\pimd-api\PIMD\src\PIMDataStore.API\PIMDataStore.API\Services\CashSummaryServices.cs	133	Active
+public async Task <DataEnvelope<CashSummary>> GetCashSummary( DataSourceRequest gridRequest, Portfolio portfolio )
+        {
+            _logger.LogInformation("Retrieving GetCashSummary Informations");
 
- CashSummaryList = cashSummarries.ToList();
+            var cashSummarries = await _cashSummaryRepository.GetCashSummary(SQLConstants.GET_CASH_SUMMARY_DETAILS, gridRequest, portfolio);
+
+            var cashSummaryExpression = (from cs in cashSummarries
+                                         where cs.Account != null && cs.Account.ToLower().Contains(portfolio.PortfolioValue.ToLower())
+                                         select cs);
+
+            CashSummaryList = cashSummaryExpression.ToList();
 
             IQueryable<CashSummary> queriableData = CashSummaryList.AsQueryable();
 
@@ -11,12 +18,60 @@ Error	CS1929	'DataSourceResult' does not contain a definition for 'Where' and th
 
             if (gridRequest.Groups?.Any() == true)
             {
-                processedData = (from cs in processedData
-                                         where cs.Account != null && cs.Account.ToLower().Contains(portfolio.PortfolioValue.ToLower())
-                                         select cs);
                 dataToReturn = new DataEnvelope<CashSummary>
                 {
                     GroupedData = processedData.Data.Cast<AggregateFunctionsGroup>().ToList(),
                     TotalItemCount = processedData.Total
                 };
             }
+            else
+            {
+                dataToReturn = new DataEnvelope<CashSummary>
+                {
+                    CurrentPageData = processedData.Data.Cast<CashSummary>().ToList(),
+                    TotalItemCount = processedData.Total
+                };
+            }
+
+            return dataToReturn;
+        }
+
+        public async Task<byte[]> GenerateCSVFile( DataSourceRequest gridRequest, Portfolio portfolio )
+        {
+            using (var memStream = new MemoryStream())
+            {
+                using (var streamWriter = new StreamWriter(memStream))
+                {
+                    var cashSummaryResults = await GetCashSummary(gridRequest, portfolio);
+                    IEnumerable<string> csvFile;
+                    if (cashSummaryResults.GroupedData != null)
+                    {
+                        csvFile = GetCSV<AggregateFunctionsGroup>(cashSummaryResults.GroupedData);
+                    }
+                    else
+                    {
+                        csvFile = GetCSV<CashSummary>(cashSummaryResults.CurrentPageData);
+                    }
+                    foreach (var item in csvFile)
+                    {
+                        streamWriter.WriteLine(item);
+                    }
+                    return memStream.ToArray();
+                }
+            }
+        }
+
+        private IEnumerable<string> GetCSV<T>( IEnumerable<T> objectlist, string separator = ",", bool header = true )
+        {
+            FieldInfo[] fields = typeof(T).GetFields();
+            PropertyInfo[] properties = typeof(T).GetProperties();
+            if (header)
+            {
+                yield return String.Join(separator, fields.Select(f => f.Name).Concat(properties.Select(p => p.Name)).ToArray());
+            }
+            foreach (var o in objectlist)
+            {
+                yield return string.Join(separator, fields.Select(f => (f.GetValue(o) ?? "").ToString())
+                    .Concat(properties.Select(p => (p.GetValue(o, null) ?? "").ToString())).ToArray());
+            }
+        }
