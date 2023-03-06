@@ -65,4 +65,31 @@ public async Task <DataEnvelope<CashSummary>> GetCashSummary( LazyLoadRequest la
     }
     
     
-    
+    using Xunit;
+using System.Net;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+
+public class CashSummaryControllerTests
+{
+    [Fact]
+    public async Task Get_Returns200StatusCode()
+    {
+        // Arrange
+        var mockServices = new Mock<ICashSummaryServices>();
+        var lazyLoadRequest = new LazyLoadRequest { PageSize = 10, Skip = 0 };
+        mockServices.Setup(s => s.GetCashSummary(lazyLoadRequest)).ReturnsAsync(new DataEnvelope<CashSummary>());
+
+        var controller = new CashSummaryController(mockServices.Object);
+        controller.ControllerContext.HttpContext = new DefaultHttpContext();
+
+        // Act
+        var result = await controller.Get(lazyLoadRequest);
+
+        // Assert
+        Assert.IsType<OkObjectResult>(result);
+        Assert.Equal((int)HttpStatusCode.OK, (result as OkObjectResult)?.StatusCode);
+    }
+}
+
