@@ -1,1 +1,68 @@
 
+[HttpPost("GetCashSummary")]
+        [Produces("application/json")]
+        public async Task<IActionResult> Get( LazyLoadRequest lazyLoadRequest )
+        {
+            if (lazyLoadRequest?.PageSize > 0 && lazyLoadRequest?.Skip != null)
+            {
+                var result = await _cashSummaryServices.GetCashSummary(lazyLoadRequest);
+                return Ok(result);
+            }
+            else
+            {
+                throw new Exception($"Request Params, Pagesize should be greater than 0 or Skip Should not be null");
+            }
+        }
+
+
+public async Task <DataEnvelope<CashSummary>> GetCashSummary( LazyLoadRequest lazyLoadRequest )
+        {
+            _logger.LogInformation("Retrieving GetCashSummary Informations");
+
+            DataEnvelope<CashSummary> dataToReturn;
+
+            var cashSummarries = await _cashSummaryRepository.GetCashSummary(SQLConstants.GET_CASH_SUMMARY_DETAILS, lazyLoadRequest);
+
+            var CashSummaryList = (from cs in cashSummarries
+                                         where cs.Account != null && cs.Account.ToLower().Contains(lazyLoadRequest.PortfolioValue.ToLower())
+                                         select cs).ToList();
+
+            if(CashSummaryList.Any() == true)
+            {
+                var processedData = await CashSummaryList.AsQueryable().ToDataSourceResultAsync(lazyLoadRequest);
+
+                if (lazyLoadRequest.Groups?.Any() == true)
+                {
+                    dataToReturn = new DataEnvelope<CashSummary>
+                    {
+                        GroupedData = processedData.Data.Cast<AggregateFunctionsGroup>().ToList(),
+                        TotalItemCount = processedData.Total
+                    };
+                }
+                else
+                {
+                    dataToReturn = new DataEnvelope<CashSummary>
+                    {
+                        CurrentPageData = processedData.Data.Cast<CashSummary>().ToList(),
+                        TotalItemCount = processedData.Total
+                    };
+                }
+
+                return dataToReturn;
+            }
+            else
+            {
+                return null;
+            }
+        }
+        
+        
+        public class LazyLoadRequest: DataSourceRequest
+    {
+        public string? PortfolioType { get; set; }
+        public string? PortfolioValue { get; set; }
+        public string? UserName { get; set; }
+    }
+    
+    
+    
