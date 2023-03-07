@@ -93,3 +93,61 @@ public class CashSummaryControllerTests
     }
 }
 
+
+
+using System;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using MyNamespace.Controllers;
+using MyNamespace.Models;
+using MyNamespace.Services;
+using Xunit;
+
+namespace MyNamespace.Tests.Controllers
+{
+    public class CashSummaryControllerTests
+    {
+        [Fact]
+        public async Task GetCashSummary_WithValidRequest_ReturnsOkResultWithDataEnvelope()
+        {
+            // Arrange
+            var mockServices = new Mock<ICashSummaryServices>();
+            var lazyLoadRequest = new LazyLoadRequest
+            {
+                PageSize = 10,
+                Skip = 0,
+                PortfolioValue = "myportfolio",
+                // Add any other properties needed for your test
+            };
+            var mockDataEnvelope = new DataEnvelope<CashSummary>
+            {
+                CurrentPageData = new[] { new CashSummary { /* Add properties as needed */ } },
+                TotalItemCount = 1
+            };
+            mockServices.Setup(s => s.GetCashSummary(lazyLoadRequest)).ReturnsAsync(mockDataEnvelope);
+            var controller = new CashSummaryController(mockServices.Object);
+
+            // Act
+            var result = await controller.Get(lazyLoadRequest);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var dataEnvelope = Assert.IsType<DataEnvelope<CashSummary>>(okResult.Value);
+            Assert.Equal(mockDataEnvelope.CurrentPageData.Length, dataEnvelope.CurrentPageData.Count);
+            Assert.Equal(mockDataEnvelope.TotalItemCount, dataEnvelope.TotalItemCount);
+        }
+
+        [Fact]
+        public async Task GetCashSummary_WithInvalidRequest_ThrowsException()
+        {
+            // Arrange
+            var mockServices = new Mock<ICashSummaryServices>();
+            var lazyLoadRequest = new LazyLoadRequest(); // Missing required properties
+            var controller = new CashSummaryController(mockServices.Object);
+
+            // Act & Assert
+            await Assert.ThrowsAsync<Exception>(() => controller.Get(lazyLoadRequest));
+        }
+    }
+}
