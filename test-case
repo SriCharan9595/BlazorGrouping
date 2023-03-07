@@ -151,3 +151,53 @@ namespace MyNamespace.Tests.Controllers
         }
     }
 }
+
+
+public class DataEnvelope<T>
+    {
+        public List<AggregateFunctionsGroup> GroupedData { get; set; }
+
+        public List<T> CurrentPageData { get; set; }
+
+        public int TotalItemCount { get; set; }
+    }
+
+{
+                EffectiveDate = null,
+                Account = "SRICHARAN",
+                CashType = "CREDIT",
+                Ticker = "USD CURRENCY",
+                LotID = "SRI\\CHARAN\\K\\\\",
+                SecurityName = "US DOLLAR",
+                MarketValue = 9595,
+                CUSIP = null,
+                ISIN = "IND954619",
+                SEDOL = "14E31S07",
+                Issuer = "US DOLLAR",
+                SecurityTypeID = "247",
+                SecurityType = "Other",
+                SecuritySubtype = null,
+                CountryCD = "US",
+                SecurityCurrency = "USD",
+                AccountName = "SK CORPORATE SOLUTIONS",
+                MaturityDate = null,
+                SettlementDate = null,
+                BuySell = null,
+                TradePrice = null,
+                TradeQuantity = null,
+                TradeID = null,
+                TransCD = null,
+                Buyer = null,
+                Seller = null,
+                LongShort = null,
+                SettlementAmt = null,
+                SettlementExchRate = null,
+                SettlementCurrency = null,
+                RealizedPL = null,
+                Broker = null,
+                TradeStatus = null,
+                AcqTotalCostLocal = null,
+                CommissionAmtLocal = null,
+                SECFees = null,
+                OtherFee = null
+            };
