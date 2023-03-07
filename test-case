@@ -201,3 +201,169 @@ public class DataEnvelope<T>
                 SECFees = null,
                 OtherFee = null
             };
+
+
+
+public static class MockCurrentPage
+{
+    public static List<CashSummary> Data = new List<CashSummary>
+    {
+        new CashSummary
+        {
+            EffectiveDate = null,
+            Account = "SRICHARAN",
+            CashType = "CREDIT",
+            Ticker = "USD CURRENCY",
+            LotID = "SRI\\CHARAN\\K\\\\",
+            SecurityName = "US DOLLAR",
+            MarketValue = 9595,
+            CUSIP = null,
+            ISIN = "IND954619",
+            SEDOL = "14E31S07",
+            Issuer = "US DOLLAR",
+            SecurityTypeID = "247",
+            SecurityType = "Other",
+            SecuritySubtype = null,
+            CountryCD = "US",
+            SecurityCurrency = "USD",
+            AccountName = "SK CORPORATE SOLUTIONS",
+            MaturityDate = null,
+            SettlementDate = null,
+            BuySell = null,
+            TradePrice = null,
+            TradeQuantity = null,
+            TradeID = null,
+            TransCD = null,
+            Buyer = null,
+            Seller = null,
+            LongShort = null,
+            SettlementAmt = null,
+            SettlementExchRate = null,
+            SettlementCurrency = null,
+            RealizedPL = null,
+            Broker = null,
+            TradeStatus = null,
+            AcqTotalCostLocal = null,
+            CommissionAmtLocal = null,
+            SECFees = null,
+            OtherFee = null
+        },
+        new CashSummary
+        {
+            EffectiveDate = null,
+            Account = "ABC",
+            CashType = "CREDIT",
+            Ticker = "XYZ",
+            LotID = "ABC\\XYZ\\K\\\\",
+            SecurityName = "SECURITY 1",
+            MarketValue = 5000,
+            CUSIP = null,
+            ISIN = "ABC123",
+            SEDOL = "EFG456",
+            Issuer = "SECURITY 1",
+            SecurityTypeID = "123",
+            SecurityType = "Equity",
+            SecuritySubtype = null,
+            CountryCD = "US",
+            SecurityCurrency = "USD",
+            AccountName = "ABC Corp",
+            MaturityDate = null,
+            SettlementDate = null,
+            BuySell = null,
+            TradePrice = null,
+            TradeQuantity = null,
+            TradeID = null,
+            TransCD = null,
+            Buyer = null,
+            Seller = null,
+            LongShort = null,
+            SettlementAmt = null,
+            SettlementExchRate = null,
+            SettlementCurrency = null,
+            RealizedPL = null,
+            Broker = null,
+            TradeStatus = null,
+            AcqTotalCostLocal = null,
+            CommissionAmtLocal = null,
+            SECFees = null,
+            OtherFee = null
+        },
+        new CashSummary
+        {
+            EffectiveDate = null,
+            Account = "PQR",
+            CashType = "DEBIT",
+            Ticker = "UVW",
+            LotID = "PQR\\UVW\\K\\\\",
+            SecurityName = "SECURITY 2",
+            MarketValue = -1000,
+            CUSIP = null,
+            ISIN = "PQR789",
+            SEDOL = "UVW012",
+            Issuer = "SECURITY 2",
+            SecurityTypeID = "456",
+            SecurityType = "Bond",
+            SecuritySubtype = null,
+            CountryCD = "US",
+            SecurityCurrency = "USD",
+            AccountName = "PQR Corp",
+            MaturityDate = null,
+            SettlementDate = null,
+            BuySell
+
+
+
+
+
+// Using statements
+using Xunit;
+using Moq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+
+// Test class
+public class CashSummaryControllerTests
+{
+    // Test method
+    [Fact]
+    public async Task GetCashSummary_ReturnsExpectedDataEnvelope()
+    {
+        // Arrange
+        var request = new LazyLoadRequest
+        {
+            PageSize = 10,
+            Skip = 0,
+            PortfolioValue = "test",
+            UserName = "testuser"
+        };
+        
+        var expectedDataEnvelope = new DataEnvelope<CashSummary>
+        {
+            TotalItemCount = 2,
+            CurrentPageData = new List<CashSummary>
+            {
+                new CashSummary { Account = "Test Account 1", Balance = 100.0 },
+                new CashSummary { Account = "Test Account 2", Balance = 200.0 }
+            }
+        };
+
+        var mockService = new Mock<ICashSummaryServices>();
+        mockService.Setup(s => s.GetCashSummary(request))
+            .ReturnsAsync(expectedDataEnvelope);
+
+        var controller = new CashSummaryController(mockService.Object);
+
+        // Act
+        var result = await controller.GetCashSummary(request);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var actualDataEnvelope = Assert.IsType<DataEnvelope<CashSummary>>(okResult.Value);
+        Assert.Equal(expectedDataEnvelope.TotalItemCount, actualDataEnvelope.TotalItemCount);
+        Assert.Equal(expectedDataEnvelope.CurrentPageData, actualDataEnvelope.CurrentPageData);
+    }
+}
+
+
+
+
