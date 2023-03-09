@@ -1,132 +1,130 @@
-
-[HttpPost("GetCashSummary")]
-        [Produces("application/json")]
-        public async Task<IActionResult> Get( LazyLoadRequest lazyLoadRequest )
-        {
-            if (lazyLoadRequest?.PageSize > 0 && lazyLoadRequest?.Skip != null)
-            {
-                var result = await _cashSummaryServices.GetCashSummary(lazyLoadRequest);
-                return Ok(result);
-            }
-            else
-            {
-                throw new Exception($"Request Params, Pagesize should be greater than 0 or Skip Should not be null");
-            }
-        }
-
-
-public async Task <DataEnvelope<CashSummary>> GetCashSummary( LazyLoadRequest lazyLoadRequest )
-        {
-            _logger.LogInformation("Retrieving GetCashSummary Informations");
-
-            DataEnvelope<CashSummary> dataToReturn;
-
-            var cashSummarries = await _cashSummaryRepository.GetCashSummary(SQLConstants.GET_CASH_SUMMARY_DETAILS, lazyLoadRequest);
-
-            var CashSummaryList = (from cs in cashSummarries
-                                         where cs.Account != null && cs.Account.ToLower().Contains(lazyLoadRequest.PortfolioValue.ToLower())
-                                         select cs).ToList();
-
-            if(CashSummaryList.Any() == true)
-            {
-                var processedData = await CashSummaryList.AsQueryable().ToDataSourceResultAsync(lazyLoadRequest);
-
-                if (lazyLoadRequest.Groups?.Any() == true)
-                {
-                    dataToReturn = new DataEnvelope<CashSummary>
-                    {
-                        GroupedData = processedData.Data.Cast<AggregateFunctionsGroup>().ToList(),
-                        TotalItemCount = processedData.Total
-                    };
-                }
-                else
-                {
-                    dataToReturn = new DataEnvelope<CashSummary>
-                    {
-                        CurrentPageData = processedData.Data.Cast<CashSummary>().ToList(),
-                        TotalItemCount = processedData.Total
-                    };
-                }
-
-                return dataToReturn;
-            }
-            else
-            {
-                return null;
-            }
-        }
-        
-        
-        public class LazyLoadRequest: DataSourceRequest
-    {
-        public string? PortfolioType { get; set; }
-        public string? PortfolioValue { get; set; }
-        public string? UserName { get; set; }
-    }
-    
-    
-    using Xunit;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+using PIMDataStore.API.Controllers;
+using PIMDataStore.API.Models.Dto;
+using PIMDataStore.API.Services;
+using PIMDataStore.Core.Logger;
 using System.Net;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Moq;
-
-public class CashSummaryControllerTests
-{
-    [Fact]
-    public async Task Get_Returns200StatusCode()
-    {
-        // Arrange
-        var mockServices = new Mock<ICashSummaryServices>();
-        var lazyLoadRequest = new LazyLoadRequest { PageSize = 10, Skip = 0 };
-        mockServices.Setup(s => s.GetCashSummary(lazyLoadRequest)).ReturnsAsync(new DataEnvelope<CashSummary>());
-
-        var controller = new CashSummaryController(mockServices.Object);
-        controller.ControllerContext.HttpContext = new DefaultHttpContext();
-
-        // Act
-        var result = await controller.Get(lazyLoadRequest);
-
-        // Assert
-        Assert.IsType<OkObjectResult>(result);
-        Assert.Equal((int)HttpStatusCode.OK, (result as OkObjectResult)?.StatusCode);
-    }
-}
-
-
-
-using System;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Moq;
-using MyNamespace.Controllers;
-using MyNamespace.Models;
-using MyNamespace.Services;
 using Xunit;
 
-namespace MyNamespace.Tests.Controllers
+namespace PIMDataStore.API.Tests.Controllers
 {
     public class CashSummaryControllerTests
     {
         [Fact]
+        public async Task GetValuesOfCashSummary_ShouldReturn200Status()
+        {
+            // Arrange
+            var lookUpParameters = new LookUpParameters {
+                Type = "sch_core_data.VW_ACCOUNT",
+                ItemType = "ACCOUNT_IDENTIFIER",
+                ItemValue = "s",
+                IncludeValue = "10",
+                NumericOrder = "%"
+            };
+
+            var mockService = new Mock<ICashSummaryServices>();
+            var mockAuthService = new Mock<IApplicationServices>();
+            var mockLogger = new Mock<ILogger<CashSummaryController>>();
+            mockService.Setup(s => s.GetValues(lookUpParameters)).ReturnsAsync(new List<string>());
+            var controller = new CashSummaryController(mockLogger.Object, mockService.Object, mockAuthService.Object);
+
+            // Act
+            var result = await controller.GetValuesOfCashSummary(lookUpParameters);
+            var okResult = result as OkObjectResult;
+
+            // Assert
+            Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(200, okResult.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetValuesOfCashSummary_ShouldReturnValidResponse()
+        {
+            // Arrange
+            var cashSummaryQuery = new LookUpParameters
+            {
+                Type = "sch_core_data.VW_ACCOUNT",
+                ItemType = "ACCOUNT_IDENTIFIER",
+                ItemValue = "v",
+                IncludeValue = "10",
+                NumericOrder = "%"
+            };
+            var expectedValues = new List<string> { "VACS_EM", "VACS_INT", "VACS_L" };
+
+            var mockService = new Mock<ICashSummaryServices>();
+            var mockAuthService = new Mock<IApplicationServices>();
+
+            var mockLogger = new Mock<ILogger<CashSummaryController>>();
+
+            mockService.Setup(s => s.GetValues(cashSummaryQuery)).ReturnsAsync(expectedValues);
+
+            var controller = new CashSummaryController(mockLogger.Object, mockService.Object, mockAuthService.Object);
+
+            // Act
+            var result = await controller.GetValuesOfCashSummary(cashSummaryQuery);
+
+            var okResult = result as OkObjectResult;
+            var actualValues = okResult.Value as List<string>;
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(expectedValues, actualValues);
+        }
+
+        [Fact]
+        public async Task GetCashSummary_ShouldReturn200Status()
+        {
+            // Arrange
+            var mockService = new Mock<ICashSummaryServices>();
+            var mockLogger = new Mock<ILogger<CashSummaryController>>();
+
+            var lazyLoadRequest = new LazyLoadRequest {
+                PageSize = 10,
+                Skip = 0,
+                PortfolioType = "Name",
+                PortfolioValue = "cs",
+                UserName = "SriCharan"
+            };
+
+            mockService.Setup(s => s.GetCashSummary(lazyLoadRequest)).ReturnsAsync(new DataEnvelope<CashSummary>());
+
+            var controller = new CashSummaryController(mockLogger.Object, mockService.Object);
+
+            // Act
+            var result = await controller.Get(lazyLoadRequest);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.IsType<OkObjectResult>(result);
+            Assert.Equal((int)HttpStatusCode.OK, (result as OkObjectResult)?.StatusCode);
+        }
+
+        [Fact]
         public async Task GetCashSummary_WithValidRequest_ReturnsOkResultWithDataEnvelope()
         {
             // Arrange
-            var mockServices = new Mock<ICashSummaryServices>();
+            var mockService = new Mock<ICashSummaryServices>();
+            var mockLogger = new Mock<ILogger<CashSummaryController>>();
+
             var lazyLoadRequest = new LazyLoadRequest
             {
                 PageSize = 10,
                 Skip = 0,
-                PortfolioValue = "myportfolio",
-                // Add any other properties needed for your test
+                PortfolioType = "Name",
+                PortfolioValue = "cs",
+                UserName = "SriCharan"
             };
+
             var mockDataEnvelope = new DataEnvelope<CashSummary>
             {
                 CurrentPageData = new[] { new CashSummary { /* Add properties as needed */ } },
                 TotalItemCount = 1
             };
-            mockServices.Setup(s => s.GetCashSummary(lazyLoadRequest)).ReturnsAsync(mockDataEnvelope);
-            var controller = new CashSummaryController(mockServices.Object);
+            mockService.Setup(s => s.GetCashSummary(lazyLoadRequest)).ReturnsAsync(mockDataEnvelope);
+            var controller = new CashSummaryController(mockLogger.Object, mockService.Object);
 
             // Act
             var result = await controller.Get(lazyLoadRequest);
@@ -142,9 +140,12 @@ namespace MyNamespace.Tests.Controllers
         public async Task GetCashSummary_WithInvalidRequest_ThrowsException()
         {
             // Arrange
-            var mockServices = new Mock<ICashSummaryServices>();
-            var lazyLoadRequest = new LazyLoadRequest(); // Missing required properties
-            var controller = new CashSummaryController(mockServices.Object);
+            var mockService = new Mock<ICashSummaryServices>();
+            var mockLogger = new Mock<ILogger<CashSummaryController>>();
+
+            var lazyLoadRequest = new LazyLoadRequest();
+
+            var controller = new CashSummaryController(mockLogger.Object, mockService.Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<Exception>(() => controller.Get(lazyLoadRequest));
@@ -153,16 +154,23 @@ namespace MyNamespace.Tests.Controllers
 }
 
 
-public class DataEnvelope<T>
-    {
-        public List<AggregateFunctionsGroup> GroupedData { get; set; }
 
-        public List<T> CurrentPageData { get; set; }
 
-        public int TotalItemCount { get; set; }
-    }
 
+
+
+
+
+using PIMDataStore.API.Models.Dto;
+
+namespace PIMDataStore.API.Tests.MockData
 {
+    internal class MockCashSummary
+    {
+        public List<CashSummary> GetMockCashSummary()
+        {
+            return new List<CashSummary()
+            {
                 EffectiveDate = null,
                 Account = "SRICHARAN",
                 CashType = "CREDIT",
@@ -201,169 +209,6 @@ public class DataEnvelope<T>
                 SECFees = null,
                 OtherFee = null
             };
-
-
-
-public static class MockCurrentPage
-{
-    public static List<CashSummary> Data = new List<CashSummary>
-    {
-        new CashSummary
-        {
-            EffectiveDate = null,
-            Account = "SRICHARAN",
-            CashType = "CREDIT",
-            Ticker = "USD CURRENCY",
-            LotID = "SRI\\CHARAN\\K\\\\",
-            SecurityName = "US DOLLAR",
-            MarketValue = 9595,
-            CUSIP = null,
-            ISIN = "IND954619",
-            SEDOL = "14E31S07",
-            Issuer = "US DOLLAR",
-            SecurityTypeID = "247",
-            SecurityType = "Other",
-            SecuritySubtype = null,
-            CountryCD = "US",
-            SecurityCurrency = "USD",
-            AccountName = "SK CORPORATE SOLUTIONS",
-            MaturityDate = null,
-            SettlementDate = null,
-            BuySell = null,
-            TradePrice = null,
-            TradeQuantity = null,
-            TradeID = null,
-            TransCD = null,
-            Buyer = null,
-            Seller = null,
-            LongShort = null,
-            SettlementAmt = null,
-            SettlementExchRate = null,
-            SettlementCurrency = null,
-            RealizedPL = null,
-            Broker = null,
-            TradeStatus = null,
-            AcqTotalCostLocal = null,
-            CommissionAmtLocal = null,
-            SECFees = null,
-            OtherFee = null
-        },
-        new CashSummary
-        {
-            EffectiveDate = null,
-            Account = "ABC",
-            CashType = "CREDIT",
-            Ticker = "XYZ",
-            LotID = "ABC\\XYZ\\K\\\\",
-            SecurityName = "SECURITY 1",
-            MarketValue = 5000,
-            CUSIP = null,
-            ISIN = "ABC123",
-            SEDOL = "EFG456",
-            Issuer = "SECURITY 1",
-            SecurityTypeID = "123",
-            SecurityType = "Equity",
-            SecuritySubtype = null,
-            CountryCD = "US",
-            SecurityCurrency = "USD",
-            AccountName = "ABC Corp",
-            MaturityDate = null,
-            SettlementDate = null,
-            BuySell = null,
-            TradePrice = null,
-            TradeQuantity = null,
-            TradeID = null,
-            TransCD = null,
-            Buyer = null,
-            Seller = null,
-            LongShort = null,
-            SettlementAmt = null,
-            SettlementExchRate = null,
-            SettlementCurrency = null,
-            RealizedPL = null,
-            Broker = null,
-            TradeStatus = null,
-            AcqTotalCostLocal = null,
-            CommissionAmtLocal = null,
-            SECFees = null,
-            OtherFee = null
-        },
-        new CashSummary
-        {
-            EffectiveDate = null,
-            Account = "PQR",
-            CashType = "DEBIT",
-            Ticker = "UVW",
-            LotID = "PQR\\UVW\\K\\\\",
-            SecurityName = "SECURITY 2",
-            MarketValue = -1000,
-            CUSIP = null,
-            ISIN = "PQR789",
-            SEDOL = "UVW012",
-            Issuer = "SECURITY 2",
-            SecurityTypeID = "456",
-            SecurityType = "Bond",
-            SecuritySubtype = null,
-            CountryCD = "US",
-            SecurityCurrency = "USD",
-            AccountName = "PQR Corp",
-            MaturityDate = null,
-            SettlementDate = null,
-            BuySell
-
-
-
-
-
-// Using statements
-using Xunit;
-using Moq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-
-// Test class
-public class CashSummaryControllerTests
-{
-    // Test method
-    [Fact]
-    public async Task GetCashSummary_ReturnsExpectedDataEnvelope()
-    {
-        // Arrange
-        var request = new LazyLoadRequest
-        {
-            PageSize = 10,
-            Skip = 0,
-            PortfolioValue = "test",
-            UserName = "testuser"
-        };
-        
-        var expectedDataEnvelope = new DataEnvelope<CashSummary>
-        {
-            TotalItemCount = 2,
-            CurrentPageData = new List<CashSummary>
-            {
-                new CashSummary { Account = "Test Account 1", Balance = 100.0 },
-                new CashSummary { Account = "Test Account 2", Balance = 200.0 }
-            }
-        };
-
-        var mockService = new Mock<ICashSummaryServices>();
-        mockService.Setup(s => s.GetCashSummary(request))
-            .ReturnsAsync(expectedDataEnvelope);
-
-        var controller = new CashSummaryController(mockService.Object);
-
-        // Act
-        var result = await controller.GetCashSummary(request);
-
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var actualDataEnvelope = Assert.IsType<DataEnvelope<CashSummary>>(okResult.Value);
-        Assert.Equal(expectedDataEnvelope.TotalItemCount, actualDataEnvelope.TotalItemCount);
-        Assert.Equal(expectedDataEnvelope.CurrentPageData, actualDataEnvelope.CurrentPageData);
+        }
     }
 }
-
-
-
-
